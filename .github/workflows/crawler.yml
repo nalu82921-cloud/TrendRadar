@@ -168,3 +168,35 @@ jobs:
           S3_REGION: ${{ secrets.S3_REGION }}
           GITHUB_ACTIONS: true
         run: uv run python -m trendradar
+
+      - name: Publish latest report to GitHub Pages root
+        if: success()
+        run: |
+          echo "Looking for latest TrendRadar HTML report..."
+
+          if [ -f output/html/latest/daily.html ]; then
+            cp output/html/latest/daily.html index.html
+            echo "Using output/html/latest/daily.html"
+          elif [ -f output/html/latest/current.html ]; then
+            cp output/html/latest/current.html index.html
+            echo "Using output/html/latest/current.html"
+          else
+            LATEST_FILE=$(find output/html -name "*.html" -type f | sort | tail -n 1)
+            if [ -z "$LATEST_FILE" ]; then
+              echo "No HTML report found"
+              exit 1
+            fi
+            cp "$LATEST_FILE" index.html
+            echo "Using $LATEST_FILE"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No report changes to commit"
+          else
+            git commit -m "Update latest TrendRadar report"
+            git push
+          fi
